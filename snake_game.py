@@ -1,6 +1,7 @@
 import pygame
 import random
 import sys
+import os
 
 # 初始化pygame
 pygame.init()
@@ -18,6 +19,38 @@ WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
+
+def get_chinese_font(size=36):
+    """获取支持中文的字体"""
+    # macOS 系统字体
+    chinese_fonts = [
+        '/System/Library/Fonts/PingFang.ttc',  # macOS 默认中文字体
+        '/System/Library/Fonts/STHeiti Light.ttc',  # macOS 黑体
+        '/System/Library/Fonts/Hiragino Sans GB.ttc',  # macOS 冬青黑体
+        '/Library/Fonts/Arial Unicode MS.ttf',  # Arial Unicode
+        # Windows 系统字体
+        'C:/Windows/Fonts/simhei.ttf',  # 黑体
+        'C:/Windows/Fonts/simsun.ttc',  # 宋体
+        'C:/Windows/Fonts/msyh.ttc',   # 微软雅黑
+        # Linux 系统字体
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+    ]
+    
+    # 尝试加载字体
+    for font_path in chinese_fonts:
+        if os.path.exists(font_path):
+            try:
+                return pygame.font.Font(font_path, size)
+            except:
+                continue
+    
+    # 如果都找不到，尝试使用系统默认字体
+    try:
+        return pygame.font.Font(pygame.font.get_default_font(), size)
+    except:
+        # 最后尝试使用None（pygame内置字体）
+        return pygame.font.Font(None, size)
 
 class Snake:
     def __init__(self):
@@ -90,7 +123,9 @@ class Game:
         self.snake = Snake()
         self.food = Food()
         self.score = 0
-        self.font = pygame.font.Font(None, 36)
+        # 使用支持中文的字体
+        self.font = get_chinese_font(28)
+        self.large_font = get_chinese_font(36)
     
     def handle_events(self):
         for event in pygame.event.get():
@@ -143,7 +178,7 @@ class Game:
     
     def game_over_screen(self):
         # 游戏结束画面
-        game_over_text = self.font.render("游戏结束!", True, RED)
+        game_over_text = self.large_font.render("游戏结束!", True, RED)
         final_score_text = self.font.render(f"最终分数: {self.score}", True, WHITE)
         restart_text = self.font.render("按 R 重新开始，ESC 退出", True, WHITE)
         
