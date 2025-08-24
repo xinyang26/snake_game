@@ -22,35 +22,97 @@ BLUE = (0, 0, 255)
 
 def get_chinese_font(size=36):
     """获取支持中文的字体"""
-    # macOS 系统字体
-    chinese_fonts = [
-        '/System/Library/Fonts/PingFang.ttc',  # macOS 默认中文字体
-        '/System/Library/Fonts/STHeiti Light.ttc',  # macOS 黑体
-        '/System/Library/Fonts/Hiragino Sans GB.ttc',  # macOS 冬青黑体
-        '/Library/Fonts/Arial Unicode MS.ttf',  # Arial Unicode
-        # Windows 系统字体
-        'C:/Windows/Fonts/simhei.ttf',  # 黑体
-        'C:/Windows/Fonts/simsun.ttc',  # 宋体
-        'C:/Windows/Fonts/msyh.ttc',   # 微软雅黑
-        # Linux 系统字体
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
-    ]
+    import platform
     
-    # 尝试加载字体
+    system = platform.system().lower()
+    
+    # 根据操作系统定义字体路径
+    chinese_fonts = []
+    
+    if system == 'darwin':  # macOS
+        chinese_fonts = [
+            '/System/Library/Fonts/PingFang.ttc',
+            '/System/Library/Fonts/STHeiti Light.ttc', 
+            '/System/Library/Fonts/Hiragino Sans GB.ttc',
+            '/Library/Fonts/Arial Unicode MS.ttf',
+        ]
+    elif system == 'windows':
+        chinese_fonts = [
+            'C:/Windows/Fonts/simhei.ttf',  # 黑体
+            'C:/Windows/Fonts/simsun.ttc',  # 宋体
+            'C:/Windows/Fonts/msyh.ttc',    # 微软雅黑
+            'C:/Windows/Fonts/msyhbd.ttc',  # 微软雅黑Bold
+        ]
+    else:  # Linux/Ubuntu
+        chinese_fonts = [
+            # Ubuntu/Debian 常见中文字体
+            '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+            '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc', 
+            '/usr/share/fonts/truetype/arphic/uming.ttc',
+            '/usr/share/fonts/truetype/arphic/ukai.ttc',
+            '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+            '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+            '/usr/share/fonts/truetype/noto/NotoSerifCJK-Regular.ttc',
+            # 用户字体目录
+            os.path.expanduser('~/.local/share/fonts/wqy-zenhei.ttc'),
+            os.path.expanduser('~/.fonts/wqy-zenhei.ttc'),
+            # Flatpak字体
+            '/var/lib/flatpak/app/org.wqy.zenhei/current/active/files/share/fonts/wqy-zenhei.ttc',
+        ]
+    
+    # 尝试加载指定的中文字体
     for font_path in chinese_fonts:
         if os.path.exists(font_path):
             try:
-                return pygame.font.Font(font_path, size)
-            except:
+                font = pygame.font.Font(font_path, size)
+                # 测试字体是否真的支持中文
+                test_surface = font.render('测', True, (255, 255, 255))
+                if test_surface.get_width() > 0:  # 如果能正常渲染中文
+                    return font
+            except Exception as e:
                 continue
     
-    # 如果都找不到，尝试使用系统默认字体
-    try:
-        return pygame.font.Font(pygame.font.get_default_font(), size)
-    except:
-        # 最后尝试使用None（pygame内置字体）
-        return pygame.font.Font(None, size)
+    # 如果上述都不行，尝试使用系统字体API
+    if system == 'linux':
+        try:
+            # 尝试使用fontconfig查找中文字体
+            import subprocess
+            result = subprocess.run(['fc-match', ':lang=zh'], 
+                                  capture_output=True, text=True)
+            if result.returncode == 0:
+                font_info = result.stdout.strip()
+                if font_info:
+                    # 提取字体文件名
+                    font_name = font_info.split(':')[0]
+                    # 尝试在常见位置查找
+                    for font_dir in ['/usr/share/fonts/', '/usr/local/share/fonts/', 
+                                   os.path.expanduser('~/.local/share/fonts/'),
+                                   os.path.expanduser('~/.fonts/')]:
+                        for root, dirs, files in os.walk(font_dir):
+                            for file in files:
+                                if file.lower() == font_name.lower():
+                                    font_path = os.path.join(root, file)
+                                    try:
+                                        return pygame.font.Font(font_path, size)
+                                    except:
+                                        continue
+        except:
+            pass
+    
+    # 最后的fallback选项
+    fallback_fonts = [
+        pygame.font.get_default_font(),
+        None  # pygame内置字体
+    ]
+    
+    for font_path in fallback_fonts:
+        try:
+            return pygame.font.Font(font_path, size)
+        except:
+            continue
+    
+    # 如果全部失败，返回一个基础字体
+    return pygame.font.Font(None, size)
 
 class Snake:
     def __init__(self):
